@@ -12,7 +12,10 @@ import (
 func main() {
 	lambda.Start(func(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		args := api.Arguments{
-			SecretArn: os.Getenv("SecretArn"),
+			SecretArn:      os.Getenv("SecretArn"),
+			GithubEndpoint: os.Getenv("GithubEndpoint"),
+			Action:         os.Getenv("Action"),
+			Region:         os.Getenv("AWS_REGION"),
 		}
 		return api.Handler(request, args)
 	})

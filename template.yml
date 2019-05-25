@@ -9,7 +9,9 @@ Parameters:
     Default: ""
   GithubEndpoint:
     Type: String
-    Default: "https://api.github.com"
+    Default: "https://api.github.com/"
+  Action:
+    Type: String
 
 Conditions:
   LambdaRoleRequired:
@@ -31,6 +33,8 @@ Resources:
             Ref: SecretArn
           GithubEndpoint:
             Ref: GithubEndpoint
+          Action:
+            Ref: Action
       Role:
         Fn::If:
           [

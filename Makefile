@@ -9,6 +9,7 @@ REGION := $(shell cat $(STACK_CONFIG) | jq '.["Region"]' -r )
 
 SecretArn := $(shell cat $(STACK_CONFIG) | jq '.["SecretArn"]' -r )
 GithubEndpoint := $(shell cat $(STACK_CONFIG) | jq '.["GithubEndpoint"]' -r )
+Action := $(shell cat $(STACK_CONFIG) | jq '.["Action"]' -r )
 
 TEMPLATE_FILE=template.yml
 
@@ -33,5 +34,6 @@ deploy: sam.yml
 		--stack-name $(STACK_NAME) \
 		--capabilities CAPABILITY_IAM \
 		--parameter-overrides \
-		  SecretArn=$(SecretArn) \
-		  GithubEndpoint=$(GithubEndpoint)
+		  SecretArn='$(SecretArn)' \
+		  GithubEndpoint='$(GithubEndpoint)' \
+		  Action='$(Action)'

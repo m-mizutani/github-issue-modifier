@@ -9,12 +9,19 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/k0kubun/pp"
 	"github.com/m-mizutani/github-issue-modifier/api"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 type config struct {
 	SecretArn      string
 	GithubEndpoint string
+	Action         string
+}
+
+func init() {
+	api.Logger.SetFormatter(&logrus.TextFormatter{})
+	api.Logger.SetLevel(logrus.WarnLevel)
 }
 
 func loadConfig() config {
@@ -44,6 +51,7 @@ func Test(t *testing.T) {
 	args := api.Arguments{
 		SecretArn:      conf.SecretArn,
 		GithubEndpoint: conf.GithubEndpoint,
+		Action:         conf.Action,
 	}
 
 	resp, err := api.Handler(request, args)
@@ -75,6 +83,16 @@ const issueCreatedBody = `{
 	  "locked": false,
 	  "assignee": null,
 	  "assignees": [
+		{
+			"login": "m-mizutani",
+			"id": 605953,
+			"avatar_url": "https://avatars0.githubusercontent.com/u/605953?v=4",
+			"gravatar_id": "",
+			"url": "https://api.github.com/users/m-mizutani",
+			"html_url": "https://github.com/m-mizutani",
+			"type": "User",
+			"site_admin": false
+		  }
 	  ],
 	  "milestone": null,
 	  "comments": 0,
