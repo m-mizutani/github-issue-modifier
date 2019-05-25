@@ -3,7 +3,6 @@ package modifyissue
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/go-github/v25/github"
-	"github.com/k0kubun/pp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,10 +37,9 @@ func Handler(request events.APIGatewayProxyRequest, args Arguments) (events.APIG
 		return replySystemError(err, "Fail to get secret values: %s", args.SecretArn)
 	}
 
-	githubEvent, ok := request.Headers["X-Github-Event"]
-	pp.Println(request)
+	githubEvent, ok := request.Headers["X-GitHub-Event"]
 	if !ok {
-		return replyUserError(nil, "Missing X-Github-Event in request header")
+		return replyUserError(nil, "Missing X-GitHub-Event in request header")
 	}
 
 	event, err := github.ParseWebHook(githubEvent, []byte(request.Body))
