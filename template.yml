@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Task Manager Serverless Applicaion"
+Parameters:
+  SecretArn:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+    Default: ""
+  GithubEndpoint:
+    Type: String
+    Default: "https://api.github.com"
+
+Conditions:
+  LambdaRoleRequired:
+    Fn::Equals: [{ Ref: LambdaRoleArn }, ""]
+
+Resources:
+  # --------------------------------------------------------
+  # Lambda functions
+  Main:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: go1.x
+      CodeUri: build
+      Handler: main
+      Timeout: 30
+      Environment:
+        Variables:
+          SecretArn:
+            Ref: SecretArn
+          GithubEndpoint:
+            Ref: GithubEndpoint
+      Role:
+        Fn::If:
+          [
+            LambdaRoleRequired,
+            { "Fn::GetAtt": LambdaRole.Arn },
+            { Ref: LambdaRoleArn },
+          ]
+      Events:
+        GetReports:
+          Type: Api
+          Properties:
+            Method: post
+            Path: /
+            RestApiId: { "Ref": "ApiGW" }
+
+  ApiGW:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+
+  # --------------------------------------------------------
+  # IAM Roles
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Condition: LambdaRoleRequired
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: ["sts:AssumeRole"]
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: "SecretAccessable"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - Ref: SecretArn
