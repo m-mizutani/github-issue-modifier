@@ -1,4 +1,4 @@
-package api
+package modifyissue
 
 import (
 	"encoding/json"

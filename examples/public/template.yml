@@ -7,11 +7,6 @@ Parameters:
   LambdaRoleArn:
     Type: String
     Default: ""
-  GithubEndpoint:
-    Type: String
-    Default: "https://api.github.com/"
-  Action:
-    Type: String
 
 Conditions:
   LambdaRoleRequired:
@@ -31,10 +26,6 @@ Resources:
         Variables:
           SecretArn:
             Ref: SecretArn
-          GithubEndpoint:
-            Ref: GithubEndpoint
-          Action:
-            Ref: Action
       Role:
         Fn::If:
           [

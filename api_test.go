@@ -1,4 +1,4 @@
-package api_test
+package modifyissue_test
 
 import (
 	"encoding/json"
@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/google/go-github/v25/github"
 	"github.com/k0kubun/pp"
-	"github.com/m-mizutani/github-issue-modifier/api"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/m-mizutani/modifyissue"
 )
 
 type config struct {
@@ -20,8 +23,8 @@ type config struct {
 }
 
 func init() {
-	api.Logger.SetFormatter(&logrus.TextFormatter{})
-	api.Logger.SetLevel(logrus.WarnLevel)
+	modifyissue.Logger.SetFormatter(&logrus.TextFormatter{})
+	modifyissue.Logger.SetLevel(logrus.WarnLevel)
 }
 
 func loadConfig() config {
@@ -40,22 +43,32 @@ func loadConfig() config {
 }
 
 func Test(t *testing.T) {
+	called := false
+	testCallback := func(client *github.Client, event *github.IssuesEvent) error {
+		called = true
+		return nil
+	}
+
 	request := events.APIGatewayProxyRequest{
 		HTTPMethod: "POST",
 		Body:       issueCreatedBody,
 		Path:       "/",
+		Headers: map[string]string{
+			"X-GitHub-Event": "issues",
+		},
 	}
 
 	conf := loadConfig()
 
-	args := api.Arguments{
-		SecretArn:      conf.SecretArn,
-		GithubEndpoint: conf.GithubEndpoint,
-		Action:         conf.Action,
+	args := modifyissue.Arguments{
+		SecretArn:          conf.SecretArn,
+		GithubEndpoint:     conf.GithubEndpoint,
+		IssueEventCallback: testCallback,
 	}
 
-	resp, err := api.Handler(request, args)
+	resp, err := modifyissue.Handler(request, args)
 	require.NoError(t, err)
+	assert.True(t, called)
 	pp.Println(resp)
 }
 
