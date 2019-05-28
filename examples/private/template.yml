@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Task Manager Serverless Applicaion"
+Parameters:
+  SecretArn:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+    Default: ""
+  GithubEndpoint:
+    Type: String
+  LambdaSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  LambdaSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+Conditions:
+  LambdaRoleRequired:
+    Fn::Equals: [{ Ref: LambdaRoleArn }, ""]
+
+Resources:
+  # --------------------------------------------------------
+  # Lambda functions
+  Main:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: go1.x
+      CodeUri: build
+      Handler: main
+      Timeout: 30
+      Environment:
+        Variables:
+          SecretArn:
+            Ref: SecretArn
+      Role:
+        Fn::If:
+          [
+            LambdaRoleRequired,
+            { "Fn::GetAtt": LambdaRole.Arn },
+            { Ref: LambdaRoleArn },
+          ]
+      VpcConfig:
+        SecurityGroupIds:
+          Ref: LambdaSecurityGroupIds
+        SubnetIds:
+          Ref: LambdaSubnetIds
+
+  Endpoint:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name:
+        Fn::Sub: "ModifyIssueAPI-${AWS::StackName}"
+      EndpointConfiguration:
+        Types:
+          - PRIVATE
+      Policy:
+        Fn::Sub: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"execute-api:Invoke","Resource":"execute-api:/*/*"}]}'
+
+  EndpointMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        ContentHandling: CONVERT_TO_TEXT
+        Uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Main.Arn}/invocations
+
+      ResourceId:
+        Fn::GetAtt: Endpoint.RootResourceId
+      RestApiId: !Ref Endpoint
+
+  EndpointStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref EndpointDeployment
+      RestApiId: !Ref Endpoint
+      StageName: prod
+
+  EndpointDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: EndpointMethod
+    Properties:
+      RestApiId: !Ref Endpoint
+
+
+  # --------------------------------------------------------
+  # IAM Roles
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Condition: LambdaRoleRequired
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: ["sts:AssumeRole"]
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: "SecretAccessable"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - Ref: SecretArn
